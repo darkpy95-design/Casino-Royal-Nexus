@@ -153,15 +153,46 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
 
     const percentScratched = transparentPixels / (canvas.width * canvas.height);
 
-    // Require at least 40% scratched before cell foil is cleared
-    if (percentScratched >= 0.40) {
+    // If at least 15% scratched or user touched/scratched cell, auto-clear foil & mark cell scratched
+    if (percentScratched >= 0.15 || transparentPixels > 80) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!scratchedCellsRef.current[index]) {
         scratchedCellsRef.current[index] = true;
         setScratchedCells([...scratchedCellsRef.current]);
         soundEngine.playButtonClick();
       }
+    } else if (!scratchedCellsRef.current[index] && transparentPixels > 20) {
+      // Mark as scratched in progress so cell counts as scratched
+      scratchedCellsRef.current[index] = true;
+      setScratchedCells([...scratchedCellsRef.current]);
     }
+  };
+
+  // Instant cell reveal on tap or click
+  const handleCellClick = (index: number) => {
+    if (isRevealed || !currentTicket || scratchedCellsRef.current[index]) return;
+    const canvas = canvasRefs.current[index];
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    scratchedCellsRef.current[index] = true;
+    setScratchedCells([...scratchedCellsRef.current]);
+    soundEngine.playButtonClick();
+  };
+
+  // Helper to scratch/reveal all 9 cells at once
+  const handleRevealAllCells = () => {
+    if (!currentTicket || isRevealed) return;
+    soundEngine.playButtonClick();
+    scratchedCellsRef.current = Array(9).fill(true);
+    setScratchedCells(Array(9).fill(true));
+    canvasRefs.current.forEach(canvas => {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    });
   };
 
   const startScratch = (index: number, e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -438,6 +469,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
                         ref={el => (canvasRefs.current[idx] = el)}
                         width={100}
                         height={100}
+                        onClick={() => handleCellClick(idx)}
                         onMouseDown={e => startScratch(idx, e)}
                         onTouchStart={e => startScratch(idx, e)}
                         onMouseMove={e => moveScratch(idx, e)}
@@ -454,29 +486,41 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
                 })}
               </div>
 
-              {/* Verify & Claim Button */}
+              {/* Action Buttons: Quick Reveal All + Verify & Claim */}
               {(() => {
                 const scratchedCount = scratchedCells.filter(Boolean).length;
                 const allScratched = scratchedCount >= 9;
 
                 return (
-                  <button
-                    type="button"
-                    onClick={handleVerifyAndClaim}
-                    disabled={!allScratched || isRevealed}
-                    className={`w-full py-3.5 rounded-xl text-xs sm:text-sm font-mono font-black uppercase transition-all flex items-center justify-center gap-2 shadow-lg ${
-                      allScratched && !isRevealed
-                        ? 'bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-emerald-950/50 animate-pulse active:scale-95 cursor-pointer'
-                        : 'bg-slate-800/80 text-slate-400 border border-slate-700/50 opacity-60 cursor-not-allowed'
-                    }`}
-                  >
-                    <CheckCircle2 className={`w-4 h-4 ${allScratched && !isRevealed ? 'text-yellow-300 fill-emerald-950' : 'text-slate-500'}`} />
-                    {isRevealed
-                      ? 'BOLETO VERIFICADO'
-                      : allScratched
-                      ? 'VERIFICAR Y COBRAR'
-                      : `RASPA LAS 9 CASILLAS PARA VERIFICAR (${scratchedCount}/9)`}
-                  </button>
+                  <div className="space-y-2">
+                    {!allScratched && !isRevealed && (
+                      <button
+                        type="button"
+                        onClick={handleRevealAllCells}
+                        className="w-full py-2 bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-mono font-bold uppercase transition-all flex items-center justify-center gap-1.5 shadow"
+                      >
+                        ⚡ DESVELAR TODAS LAS CASILLAS (1-TAP)
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyAndClaim}
+                      disabled={!allScratched || isRevealed}
+                      className={`w-full py-3.5 rounded-xl text-xs sm:text-sm font-mono font-black uppercase transition-all flex items-center justify-center gap-2 shadow-lg ${
+                        allScratched && !isRevealed
+                          ? 'bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-emerald-950/50 animate-pulse active:scale-95 cursor-pointer'
+                          : 'bg-slate-800/80 text-slate-400 border border-slate-700/50 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <CheckCircle2 className={`w-4 h-4 ${allScratched && !isRevealed ? 'text-yellow-300 fill-emerald-950' : 'text-slate-500'}`} />
+                      {isRevealed
+                        ? 'BOLETO VERIFICADO'
+                        : allScratched
+                        ? 'VERIFICAR Y COBRAR'
+                        : `RASPA LAS 9 CASILLAS PARA VERIFICAR (${scratchedCount}/9)`}
+                    </button>
+                  </div>
                 );
               })()}
             </div>

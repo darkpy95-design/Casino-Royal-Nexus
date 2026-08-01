@@ -48,8 +48,26 @@ export default function App() {
   });
 
   const [activeView, setActiveView] = useState<'login' | 'lobby' | 'slots' | 'scratch' | 'olympus' | 'roulette' | 'blackjack' | 'crazy' | 'chicken' | 'classic777' | 'balloon'>(() => {
-    return localStorage.getItem('casino_user') ? 'lobby' : 'login';
+    const savedUser = localStorage.getItem('casino_user');
+    if (!savedUser) return 'login';
+    try {
+      const savedView = localStorage.getItem('casino_active_view');
+      const validViews = ['lobby', 'slots', 'scratch', 'olympus', 'roulette', 'blackjack', 'crazy', 'chicken', 'classic777', 'balloon'];
+      if (savedView && validViews.includes(savedView)) {
+        return savedView as any;
+      }
+    } catch {
+      // Fallback
+    }
+    return 'lobby';
   });
+
+  // Keep active view persisted in localStorage
+  useEffect(() => {
+    if (activeView && activeView !== 'login') {
+      localStorage.setItem('casino_active_view', activeView);
+    }
+  }, [activeView]);
 
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [isRefreshingLobby, setIsRefreshingLobby] = useState<boolean>(false);

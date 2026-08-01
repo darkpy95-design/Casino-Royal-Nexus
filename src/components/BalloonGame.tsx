@@ -125,9 +125,17 @@ export const BalloonGame: React.FC<BalloonGameProps> = ({
 
     if (timerRef.current) clearInterval(timerRef.current);
     const claimMult = Number(multRef.current.toFixed(2));
+    const calculatedWin = Math.floor(selectedBet * claimMult);
 
+    // Instant local cashout feedback
     setIsPlaying(false);
     setIsCashedOut(true);
+    setWinAmount(calculatedWin);
+
+    soundEngine.playWin();
+    soundEngine.playCoinCollect();
+    confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+    setMessage(`🎉 ¡RETIRO EXITOSO DE ${calculatedWin.toLocaleString('es-ES')} PTS (${claimMult.toFixed(2)}x)!`);
 
     try {
       const res = await fetch('/api/balloon/cashout', {
@@ -138,17 +146,15 @@ export const BalloonGame: React.FC<BalloonGameProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setWinAmount(data.winAmount);
-        soundEngine.playWin();
-        soundEngine.playCoinCollect();
-        confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-        setMessage(`🎉 ¡RETIRO EXITOSO DE ${data.winAmount.toLocaleString('es-ES')} PTS (${claimMult.toFixed(2)}x)!`);
+        if (data.winAmount !== undefined) {
+          setWinAmount(data.winAmount);
+        }
         onBalanceUpdated();
       } else {
         setMessage(data.error || 'Error al procesar el retiro');
       }
     } catch {
-      setMessage('Error de conexión con el servidor');
+      onBalanceUpdated();
     }
   };
 
