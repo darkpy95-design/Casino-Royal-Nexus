@@ -346,40 +346,42 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
 
       {/* Main Game Container */}
       <main className="flex-1 max-w-md w-full mx-auto p-3 sm:p-4 flex flex-col justify-between space-y-4">
-        {/* Real-time Financial Capital Protection Banner */}
-        <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-3 shadow-lg font-mono text-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">💰</span>
+        {/* Real-time Financial Capital Protection Banner (ADMIN ONLY) */}
+        {user.role === 'admin' && (
+          <div className="bg-slate-900/90 border border-purple-500/40 rounded-2xl p-3 shadow-lg font-mono text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🛡️</span>
+                <div>
+                  <span className="text-purple-300 block text-[9px] uppercase font-bold">MONITOR ADMIN: CAPITAL Y BANCA</span>
+                  <span className="text-emerald-400 font-bold text-sm">
+                    {bankrollStatus?.availablePrizeCapital.toLocaleString() ?? '0'} PTS
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={fetchStatus}
+                disabled={isRefreshing}
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl transition-colors"
+                title="Actualizar Estado de Banca"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-950/80 p-2 rounded-xl border border-slate-800">
               <div>
-                <span className="text-slate-400 block text-[9px] uppercase font-bold">CAPITAL ACUMULADO PARA PREMIOS</span>
-                <span className="text-emerald-400 font-bold text-sm">
-                  {bankrollStatus?.availablePrizeCapital.toLocaleString() ?? '0'} PTS
-                </span>
+                <span className="text-slate-400 block">Boletas Vendidas:</span>
+                <span className="text-amber-300 font-bold">{bankrollStatus?.totalTicketsSold ?? 0}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Máximo Premio Desbloqueado:</span>
+                <span className="text-yellow-400 font-bold">{(bankrollStatus?.maxUnlockedPrize ?? 10000).toLocaleString()} PTS</span>
               </div>
             </div>
-
-            <button
-              onClick={fetchStatus}
-              disabled={isRefreshing}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl transition-colors"
-              title="Actualizar Estado de Banca"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
           </div>
-
-          <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-950/80 p-2 rounded-xl border border-slate-800">
-            <div>
-              <span className="text-slate-400 block">Boletas Vendidas:</span>
-              <span className="text-amber-300 font-bold">{bankrollStatus?.totalTicketsSold ?? 0}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block">Máximo Premio Desbloqueado:</span>
-              <span className="text-yellow-400 font-bold">{(bankrollStatus?.maxUnlockedPrize ?? 10000).toLocaleString()} PTS</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Error Message */}
         {errorMsg && (

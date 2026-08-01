@@ -1029,29 +1029,35 @@ app.post('/api/scratch/buy', (req: Request, res: Response) => {
   user.balance -= TICKET_PRICE;
   user.totalPointsBet += TICKET_PRICE;
 
-  // Add 5,000 to revenue, 30% house profit reserved, 70% (3,500 pts) added to prize capital
+  const targetRtpRatio = (currentRtpConfig.rtpTarget || 75) / 100;
+
+  // Add 5,000 to revenue, house profit percentage based on global house margin setting,
+  // remaining percentage goes to availablePrizeCapital
   scratchBankroll.totalTicketsSold += 1;
   scratchBankroll.totalRevenue += TICKET_PRICE;
-  scratchBankroll.availablePrizeCapital += TICKET_PRICE * 0.70;
+  scratchBankroll.availablePrizeCapital += TICKET_PRICE * targetRtpRatio;
 
   const maxPrizeAllowed = getMaxUnlockedPrize(scratchBankroll.availablePrizeCapital);
 
-  // Determine win amount dynamically based on RTP & available capital
+  // Determine win amount dynamically based on global RTP & available capital
   let chosenWinAmount = 0;
   const rand = Math.random();
 
-  if (rand < 0.65) {
-    // 65% loss (0 PTS)
+  // Loss threshold adapts dynamically with global RTP setting (e.g. 70% RTP => 68% losses, 80% RTP => 55% losses)
+  const lossThreshold = 1 - (targetRtpRatio * 0.45);
+
+  if (rand < lossThreshold) {
+    // Loss (0 PTS)
     chosenWinAmount = 0;
-  } else if (rand < 0.85) {
-    // 20% small refund win (2,000 PTS or 5,000 PTS)
+  } else if (rand < lossThreshold + 0.20) {
+    // Small refund win (2,000 PTS or 5,000 PTS)
     chosenWinAmount = Math.random() < 0.6 ? 2000 : 5000;
-  } else if (rand < 0.95) {
-    // 10% medium win (10,000 PTS or 20,000 PTS)
+  } else if (rand < lossThreshold + 0.28) {
+    // Medium win (10,000 PTS or 20,000 PTS)
     const candidates = [10000, 20000].filter(p => p <= maxPrizeAllowed && p <= scratchBankroll.availablePrizeCapital);
     chosenWinAmount = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 5000;
   } else {
-    // 5% jackpot attempt (up to maxPrizeAllowed)
+    // Jackpot attempt (up to maxPrizeAllowed)
     const candidates = [50000, 100000, 200000, 500000].filter(p => p <= maxPrizeAllowed && p <= scratchBankroll.availablePrizeCapital);
     chosenWinAmount = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : (maxPrizeAllowed >= 10000 ? 10000 : 0);
   }

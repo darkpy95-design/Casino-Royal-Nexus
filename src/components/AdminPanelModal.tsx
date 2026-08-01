@@ -443,10 +443,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <span className="text-emerald-400 font-bold text-lg">🏛️</span>
                 <div>
                   <h3 className="font-bold text-sm text-emerald-300 font-mono uppercase">
-                    3. CONTROL DE MARGEN Y GANANCIA DE LA CASA (RTP)
+                    3. CONTROL DE MARGEN GLOBAL DE LA CASA (TODOS LOS JUEGOS)
                   </h3>
                   <p className="text-[10px] text-slate-400 font-mono">
-                    Ajusta la probabilidad a favor del dueño para garantizar ganancias en Puertas del Olimpo.
+                    Ajusta la dificultad y el porcentaje de ganancia retenida para TODOS los juegos (Olimpo, 777, Ruleta, Blackjack, Raspa y Gana, Pollo Cruzar, Globo, Rueda Loca, Frutas).
                   </p>
                 </div>
               </div>
