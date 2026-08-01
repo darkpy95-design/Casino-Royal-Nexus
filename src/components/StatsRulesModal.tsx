@@ -4,7 +4,7 @@ import { BET_CATEGORIES_INFO } from '../data/slotsData';
 import { GameStats } from '../types';
 import { soundEngine } from '../audio';
 import { FruitIcon } from './FruitIcon';
-import logoImg from '../assets/logo.png';
+import { logoImg } from '../assets/logoData';
 
 interface StatsRulesModalProps {
   onClose: () => void;

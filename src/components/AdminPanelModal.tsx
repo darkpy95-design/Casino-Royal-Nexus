@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Coins, Users, Trash2, Search, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
-import logoImg from '../assets/logo.png';
+import { logoImg } from '../assets/logoData';
 
 interface AdminUserItem {
   id: string;

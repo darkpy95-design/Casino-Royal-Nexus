@@ -1,7 +1,7 @@
 import React from 'react';
 import { Volume2, VolumeX, ArrowLeft, Shield, LogOut, HelpCircle } from 'lucide-react';
 import { soundEngine } from '../audio';
-import logoImg from '../assets/logo.png';
+import { logoImg } from '../assets/logoData';
 
 interface HeaderBarProps {
   user?: { id: string; role: 'admin' | 'client'; balance: number };

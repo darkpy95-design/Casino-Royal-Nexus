@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, RefreshCw, Sparkles, Trophy, ShoppingBag, Zap, Shield, Volume2, VolumeX, AlertCircle, HelpCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Zap, HelpCircle, AlertCircle, ShoppingBag } from 'lucide-react';
 import { soundEngine } from '../audio';
 import { GameInfoModal } from './GameInfoModal';
 
@@ -7,6 +7,16 @@ interface ScratchTicketData {
   ticketId: string;
   winAmount: number;
   grid: number[];
+}
+
+interface ScratchBankrollStatus {
+  ticketPrice: number;
+  totalTicketsSold: number;
+  totalRevenue: number;
+  totalPaidOut: number;
+  houseProfit: number;
+  availablePrizeCapital: number;
+  maxUnlockedPrize: number;
 }
 
 interface ScratchCardGameProps {
@@ -20,11 +30,8 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
   onReturnToLobby,
   onBalanceUpdated,
 }) => {
-  // Batch Status State
-  const [batchNumber, setBatchNumber] = useState<number>(1);
-  const [totalBatchSize, setTotalBatchSize] = useState<number>(100);
-  const [remainingTickets, setRemainingTickets] = useState<number>(100);
-  const [ticketPrice] = useState<number>(5000);
+  // Bankroll & Status State
+  const [bankrollStatus, setBankrollStatus] = useState<ScratchBankrollStatus | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Active Game State
@@ -36,20 +43,19 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [winMessage, setWinMessage] = useState<{ amount: number; text: string } | null>(null);
 
-  // Canvas Scratching Refs and State Ref
+  // Canvas Scratching Refs
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const scratchedCellsRef = useRef<boolean[]>(Array(9).fill(false));
+  const isScratchingRef = useRef<boolean>(false);
 
-  // Fetch Batch Status
-  const fetchBatchStatus = async () => {
+  // Fetch Bankroll Status
+  const fetchStatus = async () => {
     setIsRefreshing(true);
     try {
       const res = await fetch('/api/scratch/status');
       const data = await res.json();
       if (data) {
-        setBatchNumber(data.batchNumber);
-        setTotalBatchSize(data.totalBatchSize);
-        setRemainingTickets(data.remainingTickets);
+        setBankrollStatus(data);
       }
     } catch {
       // Offline fallback
@@ -59,12 +65,12 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
   };
 
   useEffect(() => {
-    fetchBatchStatus();
-    const interval = setInterval(fetchBatchStatus, 5000); // Live sync remaining tickets
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Initialize Canvas Scratch Layer for a cell
+  // Initialize Canvas Foil for cell
   const initCanvasCell = (index: number) => {
     const canvas = canvasRefs.current[index];
     if (!canvas) return;
@@ -72,16 +78,13 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Reset composite operation to normal drawing
     ctx.globalCompositeOperation = 'source-over';
-
     const width = canvas.width;
     const height = canvas.height;
 
-    // Clear previous drawing/scratching
     ctx.clearRect(0, 0, width, height);
 
-    // Draw Gold Metallic Foil
+    // Draw Metallic Gold Foil
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, '#f59e0b');
     grad.addColorStop(0.3, '#fbbf24');
@@ -92,8 +95,8 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
-    // Add Foil Texture Text
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    // Add Foil Text Label
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -110,33 +113,9 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
     }
   }, [currentTicket?.ticketId]);
 
-  // Reveal a single cell completely
-  const revealCell = (index: number) => {
-    if (isRevealed || !currentTicket) return;
-
-    const canvas = canvasRefs.current[index];
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    if (!scratchedCellsRef.current[index]) {
-      scratchedCellsRef.current[index] = true;
-      setScratchedCells([...scratchedCellsRef.current]);
-    }
-
-    checkWinState();
-  };
-
-  // Scratch Action Handler (Touch or Mouse)
-  const handleScratch = (index: number, e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (isRevealed || !currentTicket) return;
-
-    // Direct tap or click reveals cell immediately
-    if (e.type === 'click' || e.type === 'touchstart' || e.type === 'mousedown') {
-      revealCell(index);
-      return;
-    }
+  // Scratch Action Handler
+  const scratchAtPoint = (index: number, e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (isRevealed || !currentTicket || scratchedCellsRef.current[index]) return;
 
     const canvas = canvasRefs.current[index];
     if (!canvas) return;
@@ -151,22 +130,21 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else if ('clientX' in e) {
-      clientX = e.clientX;
-      clientY = e.clientY;
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
     } else {
-      revealCell(index);
       return;
     }
 
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
 
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
-    ctx.arc(x, y, 28, 0, Math.PI * 2);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
 
-    // Check transparent pixels ratio
+    // Check transparency ratio
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     let transparentPixels = 0;
     for (let i = 3; i < imageData.data.length; i += 4) {
@@ -175,74 +153,44 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
 
     const percentScratched = transparentPixels / (canvas.width * canvas.height);
 
-    // As soon as >= 8% of foil is touched, reveal cell completely
-    if (percentScratched > 0.08) {
-      revealCell(index);
-    } else {
-      checkWinState();
+    // Require at least 45% scratched before cell is fully cleared
+    if (percentScratched >= 0.45) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!scratchedCellsRef.current[index]) {
+        scratchedCellsRef.current[index] = true;
+        setScratchedCells([...scratchedCellsRef.current]);
+        soundEngine.playButtonClick();
+        checkWinState();
+      }
     }
   };
 
-  // Check if 3 matching winning values are visible OR if all cells are scratched
+  const startScratch = (index: number, e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    isScratchingRef.current = true;
+    scratchAtPoint(index, e);
+  };
+
+  const moveScratch = (index: number, e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (isScratchingRef.current) {
+      scratchAtPoint(index, e);
+    }
+  };
+
+  const stopScratch = () => {
+    isScratchingRef.current = false;
+  };
+
+  // Check win state ONLY when ALL 9 cells have been scratched
   const checkWinState = () => {
     if (!currentTicket || isRevealed) return;
 
-    // Determine which cells have been scratched or partially uncovered
-    const revealedIndices = new Set<number>();
+    const scratchedCount = scratchedCellsRef.current.filter(Boolean).length;
 
-    currentTicket.grid.forEach((_, idx) => {
-      if (scratchedCellsRef.current[idx]) {
-        revealedIndices.add(idx);
-        return;
-      }
-      const canvas = canvasRefs.current[idx];
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          let transparent = 0;
-          for (let i = 3; i < imgData.data.length; i += 4) {
-            if (imgData.data[i] === 0) transparent++;
-          }
-          if (transparent / (canvas.width * canvas.height) >= 0.05) {
-            revealedIndices.add(idx);
-          }
-        }
-      }
-    });
-
-    // Count occurrences of each prize value among ALL revealed cells
-    const revealedValuesCount: Record<number, number> = {};
-    revealedIndices.forEach(idx => {
-      const val = currentTicket.grid[idx];
-      revealedValuesCount[val] = (revealedValuesCount[val] || 0) + 1;
-    });
-
-    let detectedWinVal = 0;
-
-    // Check if the winning amount exists and if 3 winning cells are in revealedIndices
-    const winVal = currentTicket.winAmount;
-    if (winVal > 0) {
-      const matchingCount = currentTicket.grid.filter((val, idx) => val === winVal && revealedIndices.has(idx)).length;
-      if (matchingCount >= 3) {
-        detectedWinVal = winVal;
-      }
-    }
-
-    // Double check if ANY prize value appears 3 times among revealed values
-    Object.entries(revealedValuesCount).forEach(([valStr, count]) => {
-      if (count >= 3 && Number(valStr) > 0) {
-        detectedWinVal = Number(valStr);
-      }
-    });
-
-    const isWinTriggered = detectedWinVal > 0;
-    const allScratched = revealedIndices.size >= 9;
-
-    // Trigger instant win reveal as soon as 3 matching prizes are visible or all scratched
-    if (isWinTriggered || allScratched) {
+    // ONLY declare winner when all 9 cells are scratched!
+    if (scratchedCount >= 9) {
       scratchedCellsRef.current = Array(9).fill(true);
       setScratchedCells(Array(9).fill(true));
+
       canvasRefs.current.forEach(c => {
         if (c) {
           const ctx = c.getContext('2d');
@@ -251,19 +199,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       });
 
       setIsRevealed(true);
-
-      // Determine final win amount from grid
-      const gridCounts: Record<number, number> = {};
-      currentTicket.grid.forEach(v => { gridCounts[v] = (gridCounts[v] || 0) + 1; });
-      let gridWin = 0;
-      Object.entries(gridCounts).forEach(([valStr, count]) => {
-        if (count >= 3 && Number(valStr) > 0) {
-          gridWin = Number(valStr);
-        }
-      });
-
-      const finalWinAmount = gridWin > 0 ? gridWin : (detectedWinVal > 0 ? detectedWinVal : currentTicket.winAmount);
-      processTicketWin({ ...currentTicket, winAmount: finalWinAmount });
+      processTicketWin(currentTicket);
     }
   };
 
@@ -285,7 +221,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       soundEngine.playJackpot();
       setWinMessage({
         amount: claimAmount,
-        text: `¡FELICIDADES! ¡COINCIDIERON 3 PREMIOS DE ${claimAmount.toLocaleString('es-ES')} PTS!`,
+        text: `¡FELICIDADES! ¡ACERTASTE 3 COINCIDENCIAS DE ${claimAmount.toLocaleString('es-ES')} PTS!`,
       });
 
       try {
@@ -295,6 +231,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
           body: JSON.stringify({ userId: user.id, winAmount: claimAmount }),
         });
         onBalanceUpdated();
+        fetchStatus();
       } catch {
         // Fallback
       }
@@ -302,7 +239,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       soundEngine.playButtonClick();
       setWinMessage({
         amount: 0,
-        text: '¡Casi lo logras! No hubo 3 coincidencias. ¡Prueba otro boleto!',
+        text: '¡Casi lo logras! No hubo 3 coincidencias en este boleto. ¡Sigue intentando!',
       });
     }
   };
@@ -312,6 +249,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
     if (!currentTicket || isRevealed) return;
 
     soundEngine.playButtonClick();
+    scratchedCellsRef.current = Array(9).fill(true);
     setScratchedCells(Array(9).fill(true));
 
     canvasRefs.current.forEach(canvas => {
@@ -328,6 +266,8 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
   // Buy New Ticket
   const handleBuyTicket = async () => {
     if (isBuying) return;
+
+    const ticketPrice = bankrollStatus?.ticketPrice || 5000;
 
     if (user.balance < ticketPrice) {
       setErrorMsg(`Puntos insuficientes. Necesitas ${ticketPrice.toLocaleString()} pts.`);
@@ -356,10 +296,8 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       }
 
       setCurrentTicket(data.ticket);
-      setRemainingTickets(data.remainingTickets);
-      setTotalBatchSize(data.totalBatchSize);
-      setBatchNumber(data.batchNumber);
       onBalanceUpdated();
+      fetchStatus();
       soundEngine.playCoinCollect();
     } catch {
       setErrorMsg('Error de conexión con el servidor');
@@ -385,7 +323,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
               🎟️ RASPA Y GANA ROYALE
             </h1>
             <span className="text-[10px] text-amber-400/80 font-mono block mt-0.5 uppercase">
-              Serie #{batchNumber}
+              Boleto Inteligente
             </span>
           </div>
 
@@ -408,26 +346,39 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
 
       {/* Main Game Container */}
       <main className="flex-1 max-w-md w-full mx-auto p-3 sm:p-4 flex flex-col justify-between space-y-4">
-        {/* Real-time Ticket Batch Inventory Counter Box */}
-        <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-3 shadow-lg flex items-center justify-between font-mono text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">📦</span>
-            <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">LOTE EN VENTA (#SERIE {batchNumber})</span>
-              <span className="text-amber-300 font-bold text-sm">
-                Quedan: <span className="text-amber-400 font-black text-base">{remainingTickets}</span> / {totalBatchSize}
-              </span>
+        {/* Real-time Financial Capital Protection Banner */}
+        <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-3 shadow-lg font-mono text-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">💰</span>
+              <div>
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">CAPITAL ACUMULADO PARA PREMIOS</span>
+                <span className="text-emerald-400 font-bold text-sm">
+                  {bankrollStatus?.availablePrizeCapital.toLocaleString() ?? '0'} PTS
+                </span>
+              </div>
             </div>
+
+            <button
+              onClick={fetchStatus}
+              disabled={isRefreshing}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl transition-colors"
+              title="Actualizar Estado de Banca"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
           </div>
 
-          <button
-            onClick={fetchBatchStatus}
-            disabled={isRefreshing}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl transition-colors"
-            title="Actualizar Inventario"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+            <div>
+              <span className="text-slate-400 block">Boletas Vendidas:</span>
+              <span className="text-amber-300 font-bold">{bankrollStatus?.totalTicketsSold ?? 0}</span>
+            </div>
+            <div>
+              <span className="text-slate-400 block">Máximo Premio Desbloqueado:</span>
+              <span className="text-yellow-400 font-bold">{(bankrollStatus?.maxUnlockedPrize ?? 10000).toLocaleString()} PTS</span>
+            </div>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -449,7 +400,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
               GRAN RASPA Y GANA
             </h2>
             <p className="text-[11px] text-amber-200/90 font-mono font-bold">
-              ¡ACIERTA 3 VALORES IGUALES Y GANA HASTA 1.000.000 PTS!
+              ¡RASPA CON EL DEDO Y ACIERTA 3 VALORES IGUALES!
             </p>
           </div>
 
@@ -466,7 +417,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
                 {currentTicket.grid.map((val, idx) => {
                   const valCount = currentTicket.grid.filter(v => v === val).length;
                   const isMatch = (currentTicket.winAmount > 0 && val === currentTicket.winAmount) || valCount >= 3;
-                  const isHighlighted = isMatch && (isRevealed || scratchedCells[idx]);
+                  const isHighlighted = isMatch && isRevealed;
 
                   return (
                     <div
@@ -506,11 +457,13 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
                         ref={el => (canvasRefs.current[idx] = el)}
                         width={100}
                         height={100}
-                        onClick={() => revealCell(idx)}
-                        onMouseDown={e => handleScratch(idx, e)}
-                        onTouchStart={e => handleScratch(idx, e)}
-                        onMouseMove={e => handleScratch(idx, e)}
-                        onTouchMove={e => handleScratch(idx, e)}
+                        onMouseDown={e => startScratch(idx, e)}
+                        onTouchStart={e => startScratch(idx, e)}
+                        onMouseMove={e => moveScratch(idx, e)}
+                        onTouchMove={e => moveScratch(idx, e)}
+                        onMouseUp={stopScratch}
+                        onTouchEnd={stopScratch}
+                        onMouseLeave={stopScratch}
                         className={`absolute inset-0 w-full h-full cursor-pointer touch-none transition-opacity duration-300 ${
                           scratchedCells[idx] ? 'opacity-0 pointer-events-none' : 'opacity-100'
                         }`}
@@ -538,7 +491,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
                   ¡ADQUIERE TU BOLETO DE LA SUERTE!
                 </h3>
                 <p className="text-xs text-slate-300 font-sans max-w-xs mx-auto">
-                  Toca el botón abajo para comprar tu boleto de la serie actual por <strong>5.000 Puntos</strong>.
+                  Toca el botón abajo para comprar tu boleto por <strong>5.000 Puntos</strong>.
                 </p>
               </div>
             </div>

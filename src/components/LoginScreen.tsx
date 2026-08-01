@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, KeyRound, AlertCircle } from 'lucide-react';
-import logoImg from '../assets/logo.png';
+import { logoImg } from '../assets/logoData';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: { id: string; role: 'admin' | 'client'; balance: number }) => void;

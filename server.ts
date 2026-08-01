@@ -832,7 +832,7 @@ app.post('/api/spin', (req: Request, res: Response) => {
 });
 
 // Scratch Card (Raspa y Gana) Backend State and Persistence
-const SCRATCH_FILE = path.join(process.cwd(), 'scratch_batch.json');
+const SCRATCH_BANKROLL_FILE = path.join(process.cwd(), 'scratch_bankroll.json');
 
 export interface ScratchTicket {
   ticketId: string;
@@ -840,12 +840,44 @@ export interface ScratchTicket {
   grid: number[];
 }
 
-export interface ScratchBatchData {
-  batchNumber: number;
-  totalBatchSize: number;
-  tickets: ScratchTicket[];
-  soldCount: number;
+export interface ScratchBankrollData {
+  totalTicketsSold: number;
+  totalRevenue: number;
+  totalPaidOut: number;
+  availablePrizeCapital: number;
 }
+
+function loadScratchBankroll(): ScratchBankrollData {
+  try {
+    if (fs.existsSync(SCRATCH_BANKROLL_FILE)) {
+      const raw = fs.readFileSync(SCRATCH_BANKROLL_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data && typeof data.totalTicketsSold === 'number') {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.error('Error loading scratch bankroll:', err);
+  }
+  const initial: ScratchBankrollData = {
+    totalTicketsSold: 0,
+    totalRevenue: 0,
+    totalPaidOut: 0,
+    availablePrizeCapital: 0,
+  };
+  saveScratchBankroll(initial);
+  return initial;
+}
+
+function saveScratchBankroll(data: ScratchBankrollData) {
+  try {
+    fs.writeFileSync(SCRATCH_BANKROLL_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving scratch bankroll:', err);
+  }
+}
+
+let scratchBankroll = loadScratchBankroll();
 
 function generateTicketGrid(winAmount: number): number[] {
   const teaserPool = [1000000, 500000, 200000, 100000, 50000, 20000, 10000, 5000];
@@ -900,103 +932,14 @@ function generateTicketGrid(winAmount: number): number[] {
   }
 }
 
-function generateNewBatch(batchNumber: number): ScratchBatchData {
-  // Batch size: 100 for batch 1, 200 for batch 2, 300 for batch 3...
-  const totalBatchSize = batchNumber === 1 ? 100 : batchNumber * 100;
-  const multiplier = batchNumber;
-
-  const prizes: number[] = [];
-  
-  // High prizes (Controlled House Advantage)
-  // Exactly 1x 500,000 per batch
-  prizes.push(500000);
-  
-  // 200,000 pts: 1x per 100 tickets
-  for (let i = 0; i < Math.max(1, multiplier); i++) prizes.push(200000);
-  
-  // 100,000 pts: 1x per 100 tickets
-  for (let i = 0; i < Math.max(1, multiplier); i++) prizes.push(100000);
-  
-  // 50,000 pts: 2x per 100 tickets
-  for (let i = 0; i < 2 * multiplier; i++) prizes.push(50000);
-  
-  // 20,000 pts: 5x per 100 tickets
-  for (let i = 0; i < 5 * multiplier; i++) prizes.push(20000);
-  
-  // 10,000 pts: 10x per 100 tickets
-  for (let i = 0; i < 10 * multiplier; i++) prizes.push(10000);
-  
-  // 5,000 pts: 15x per 100 tickets
-  for (let i = 0; i < 15 * multiplier; i++) prizes.push(5000);
-  
-  // Fill remaining tickets with 0 (Loss)
-  while (prizes.length < totalBatchSize) {
-    prizes.push(0);
-  }
-
-  // Shuffle prizes
-  for (let i = prizes.length - 1; i > 0; i--) {
-    const j = Math.floor(crypto.randomBytes(1)[0] / 256 * (i + 1));
-    [prizes[i], prizes[j]] = [prizes[j], prizes[i]];
-  }
-
-  // Create Ticket Objects
-  const tickets: ScratchTicket[] = prizes.map((winAmt, idx) => ({
-    ticketId: `B${batchNumber}-T${idx + 1}-${crypto.randomBytes(3).toString('hex')}`,
-    winAmount: winAmt,
-    grid: generateTicketGrid(winAmt),
-  }));
-
-  return {
-    batchNumber,
-    totalBatchSize,
-    tickets,
-    soldCount: 0,
-  };
+function getMaxUnlockedPrize(capital: number): number {
+  if (capital < 20000) return 10000;
+  if (capital < 50000) return 20000;
+  if (capital < 150000) return 50000;
+  if (capital < 350000) return 100000;
+  if (capital < 800000) return 200000;
+  return 500000;
 }
-
-function loadScratchBatch(): ScratchBatchData {
-  try {
-    if (fs.existsSync(SCRATCH_FILE)) {
-      const raw = fs.readFileSync(SCRATCH_FILE, 'utf-8');
-      const data: ScratchBatchData = JSON.parse(raw);
-      if (data && data.tickets && data.tickets.length > 0) {
-        // Validate existing tickets to ensure exact match between grid and winAmount
-        const isBatchValid = data.tickets.every(t => {
-          if (!t.grid || t.grid.length !== 9) return false;
-          const counts: Record<number, number> = {};
-          t.grid.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
-          const matches = Object.entries(counts).filter(([_, c]) => c >= 3);
-          if (t.winAmount > 0) {
-            return matches.length === 1 && Number(matches[0][0]) === t.winAmount;
-          } else {
-            return matches.length === 0;
-          }
-        });
-
-        if (isBatchValid) {
-          return data;
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error loading scratch batch:', err);
-  }
-  
-  const initialBatch = generateNewBatch(1);
-  saveScratchBatch(initialBatch);
-  return initialBatch;
-}
-
-function saveScratchBatch(batch: ScratchBatchData) {
-  try {
-    fs.writeFileSync(SCRATCH_FILE, JSON.stringify(batch, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving scratch batch:', err);
-  }
-}
-
-let activeScratchBatch = loadScratchBatch();
 
 // Double-Up (Duplicar o Perder) Risk Mini Game Endpoint
 app.post('/api/double-up', (req: Request, res: Response) => {
@@ -1054,12 +997,15 @@ app.post('/api/double-up', (req: Request, res: Response) => {
 
 // Scratch Card (Raspa y Gana) Status Endpoint
 app.get('/api/scratch/status', (_req: Request, res: Response) => {
+  const maxUnlockedPrize = getMaxUnlockedPrize(scratchBankroll.availablePrizeCapital);
   res.json({
     ticketPrice: 5000,
-    batchNumber: activeScratchBatch.batchNumber,
-    totalBatchSize: activeScratchBatch.totalBatchSize,
-    remainingTickets: activeScratchBatch.tickets.length,
-    soldCount: activeScratchBatch.soldCount,
+    totalTicketsSold: scratchBankroll.totalTicketsSold,
+    totalRevenue: scratchBankroll.totalRevenue,
+    totalPaidOut: scratchBankroll.totalPaidOut,
+    houseProfit: Math.round(scratchBankroll.totalRevenue * 0.30),
+    availablePrizeCapital: Math.round(scratchBankroll.availablePrizeCapital),
+    maxUnlockedPrize,
   });
 });
 
@@ -1083,26 +1029,60 @@ app.post('/api/scratch/buy', (req: Request, res: Response) => {
   user.balance -= TICKET_PRICE;
   user.totalPointsBet += TICKET_PRICE;
 
-  // Pop next ticket from active batch
-  if (activeScratchBatch.tickets.length === 0) {
-    // Generate next batch (Batch 2 = 200 tickets, Batch 3 = 300 tickets...)
-    activeScratchBatch = generateNewBatch(activeScratchBatch.batchNumber + 1);
+  // Add 5,000 to revenue, 30% house profit reserved, 70% (3,500 pts) added to prize capital
+  scratchBankroll.totalTicketsSold += 1;
+  scratchBankroll.totalRevenue += TICKET_PRICE;
+  scratchBankroll.availablePrizeCapital += TICKET_PRICE * 0.70;
+
+  const maxPrizeAllowed = getMaxUnlockedPrize(scratchBankroll.availablePrizeCapital);
+
+  // Determine win amount dynamically based on RTP & available capital
+  let chosenWinAmount = 0;
+  const rand = Math.random();
+
+  if (rand < 0.65) {
+    // 65% loss (0 PTS)
+    chosenWinAmount = 0;
+  } else if (rand < 0.85) {
+    // 20% small refund win (2,000 PTS or 5,000 PTS)
+    chosenWinAmount = Math.random() < 0.6 ? 2000 : 5000;
+  } else if (rand < 0.95) {
+    // 10% medium win (10,000 PTS or 20,000 PTS)
+    const candidates = [10000, 20000].filter(p => p <= maxPrizeAllowed && p <= scratchBankroll.availablePrizeCapital);
+    chosenWinAmount = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 5000;
+  } else {
+    // 5% jackpot attempt (up to maxPrizeAllowed)
+    const candidates = [50000, 100000, 200000, 500000].filter(p => p <= maxPrizeAllowed && p <= scratchBankroll.availablePrizeCapital);
+    chosenWinAmount = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : (maxPrizeAllowed >= 10000 ? 10000 : 0);
   }
 
-  const purchasedTicket = activeScratchBatch.tickets.pop()!;
-  activeScratchBatch.soldCount += 1;
+  // Double check that we NEVER pay out more than availablePrizeCapital
+  if (chosenWinAmount > scratchBankroll.availablePrizeCapital) {
+    chosenWinAmount = 0;
+  }
 
-  // Save changes
+  if (chosenWinAmount > 0) {
+    scratchBankroll.totalPaidOut += chosenWinAmount;
+    scratchBankroll.availablePrizeCapital -= chosenWinAmount;
+  }
+
+  const ticketGrid = generateTicketGrid(chosenWinAmount);
+  const purchasedTicket: ScratchTicket = {
+    ticketId: `T${scratchBankroll.totalTicketsSold}-${crypto.randomBytes(3).toString('hex')}`,
+    winAmount: chosenWinAmount,
+    grid: ticketGrid,
+  };
+
   saveUsers(usersMap);
-  saveScratchBatch(activeScratchBatch);
+  saveScratchBankroll(scratchBankroll);
 
   res.json({
     success: true,
     ticket: purchasedTicket,
     newBalance: user.balance,
-    batchNumber: activeScratchBatch.batchNumber,
-    totalBatchSize: activeScratchBatch.totalBatchSize,
-    remainingTickets: activeScratchBatch.tickets.length,
+    totalTicketsSold: scratchBankroll.totalTicketsSold,
+    availablePrizeCapital: scratchBankroll.availablePrizeCapital,
+    maxUnlockedPrize: getMaxUnlockedPrize(scratchBankroll.availablePrizeCapital),
   });
 });
 

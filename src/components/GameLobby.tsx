@@ -1,6 +1,6 @@
 import React from 'react';
 import { Play, Shield, LogOut, RefreshCw, Sparkles, Trophy, Lock } from 'lucide-react';
-import logoImg from '../assets/logo.png';
+import { logoImg } from '../assets/logoData';
 
 interface GameLobbyProps {
   user: { id: string; role: 'admin' | 'client'; balance: number };
