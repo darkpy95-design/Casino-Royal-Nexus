@@ -54,6 +54,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         <img 
           src={logoImg} 
           alt="Royal Nexus Casino Background" 
+          onError={(e) => { e.currentTarget.src = '/logo.png'; }}
           className="w-full h-full object-cover opacity-15 filter blur-[3px] scale-105" 
         />
         <div className="absolute inset-0 bg-slate-950/80 mix-blend-multiply" />
@@ -71,6 +72,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <img 
             src={logoImg} 
             alt="Royal Nexus Casino Logo" 
+            onError={(e) => { e.currentTarget.src = '/logo.png'; }}
             className="w-24 h-24 sm:w-28 sm:h-28 object-contain mx-auto mb-2 drop-shadow-[0_0_20px_rgba(245,158,11,0.5)] rounded-2xl" 
           />
           <h1 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase font-mono tracking-wider">

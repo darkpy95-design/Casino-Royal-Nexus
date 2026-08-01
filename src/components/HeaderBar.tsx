@@ -1,6 +1,7 @@
 import React from 'react';
 import { Volume2, VolumeX, ArrowLeft, Shield, LogOut, HelpCircle } from 'lucide-react';
 import { soundEngine } from '../audio';
+import logoImg from '../assets/logo.png';
 
 interface HeaderBarProps {
   user?: { id: string; role: 'admin' | 'client'; balance: number };
@@ -42,22 +43,25 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             <ArrowLeft className="w-3 h-3" /> Lobby
           </button>
 
-          <div className="leading-tight">
-            <h1 className="text-xs font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 font-mono">
-              FRUIT KING 3
-            </h1>
-            <span className="text-[9px] text-amber-400/80 font-mono block">
-              POZO: {jackpotPool.toLocaleString()}
-            </span>
+          <div className="flex items-center gap-1.5">
+            <img src={logoImg} alt="Logo" className="w-6 h-6 object-contain rounded-md drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]" />
+            <div className="leading-tight">
+              <h1 className="text-xs font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 font-mono">
+                FRUIT KING 3
+              </h1>
+              <span className="text-[9px] text-amber-400/80 font-mono block">
+                POZO: {jackpotPool.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* User Balance */}
-        <div className="flex items-center gap-1">
-          <div className="bg-slate-950 border border-emerald-500/40 rounded-lg px-2.5 py-1 flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="bg-slate-950 border border-emerald-500/40 rounded-lg px-2 py-1 flex items-center gap-1 whitespace-nowrap">
             <span className="text-[10px] text-emerald-400 font-bold uppercase font-mono">PTS:</span>
             <span className="text-xs font-black font-mono text-emerald-300 tracking-wider">
-              {balance.toLocaleString()}
+              {balance.toLocaleString('es-ES')}
             </span>
           </div>
         </div>

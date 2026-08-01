@@ -222,38 +222,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 font-sans text-slate-100">
-      <div className="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-4xl max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 font-sans text-slate-100">
+      <div className="bg-slate-900 border border-purple-500/40 rounded-2xl sm:rounded-3xl w-full max-w-4xl max-h-[95dvh] sm:max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Full-screen Casino Background Wallpaper in Admin Panel */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
           <img 
             src={logoImg} 
             alt="Royal Nexus Casino Background" 
+            onError={(e) => { e.currentTarget.src = '/logo.png'; }}
             className="w-full h-full object-cover opacity-10 filter blur-[2px] scale-105" 
           />
           <div className="absolute inset-0 bg-slate-950/85 mix-blend-multiply" />
         </div>
+        
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 relative z-10">
-          <div className="flex items-center gap-2.5">
+        <div className="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 relative z-10 gap-2 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
             <img 
               src={logoImg} 
               alt="Royal Nexus Logo" 
-              className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] rounded-lg" 
+              onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+              className="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] rounded-lg shrink-0" 
             />
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-purple-300 font-mono uppercase tracking-wider">
-                PANEL DE ADMINISTRACIÓN — ROYAL NEXUS CASINO
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xs sm:text-base font-black text-purple-300 font-mono uppercase tracking-wider truncate">
+                PANEL DE ADMINISTRACIÓN
               </h2>
-              <p className="text-[11px] text-slate-400 font-mono">
-                Gestión de Clientes y Acreditación de Puntos Virtuales
+              <p className="text-[9px] sm:text-[11px] text-slate-400 font-mono truncate">
+                Gestión de Clientes y Puntos Virtuales
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors"
+            className="p-1.5 sm:p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors shrink-0 active:scale-95"
+            title="Cerrar Panel Admin"
           >
             <X className="w-5 h-5" />
           </button>
@@ -566,7 +570,80 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950">
+            {/* Mobile Card View (shown on screens < sm) */}
+            <div className="sm:hidden space-y-3">
+              {filteredUsers.map(u => {
+                const netGains = u.totalPointsWon - u.totalPointsBet;
+                return (
+                  <div key={u.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-3 font-mono text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">👤</span>
+                        <span className="font-bold text-amber-300 text-sm">{u.id}</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                            u.role === 'admin'
+                              ? 'bg-purple-950 text-purple-300 border border-purple-500/30'
+                              : 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                          }`}
+                        >
+                          {u.role.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block">Clave: {u.password}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase">Puntos Actuales:</span>
+                        <span className="font-bold text-emerald-400 text-sm">{u.balance.toLocaleString()} pts</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase">Resultado (G/P):</span>
+                        {netGains > 0 ? (
+                          <span className="font-bold text-emerald-400">+{netGains.toLocaleString()} pts</span>
+                        ) : netGains < 0 ? (
+                          <span className="font-bold text-amber-400">{netGains.toLocaleString()} pts</span>
+                        ) : (
+                          <span className="text-slate-500">0 pts</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setCreditTargetId(u.id);
+                        }}
+                        className="flex-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                      >
+                        ➕/➖ Cargar Puntos
+                      </button>
+                      {u.role !== 'admin' && (
+                        <button
+                          onClick={() => setUserToDelete(u.id)}
+                          className="px-3 py-2 bg-red-950/60 hover:bg-red-900/80 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
+                          title="Eliminar Cliente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredUsers.length === 0 && (
+                <div className="p-6 text-center text-slate-500 italic bg-slate-950 border border-slate-800 rounded-2xl">
+                  No se encontraron usuarios
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Table View (hidden on screens < sm) */}
+            <div className="hidden sm:block overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950">
               <table className="w-full text-left text-xs font-mono">
                 <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>

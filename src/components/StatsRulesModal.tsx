@@ -23,6 +23,7 @@ export const StatsRulesModal: React.FC<StatsRulesModalProps> = ({ onClose, stats
             <img 
               src={logoImg} 
               alt="Royal Nexus Logo" 
+              onError={(e) => { e.currentTarget.src = '/logo.png'; }}
               className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] rounded" 
             />
             <h2 className="text-base sm:text-lg font-black text-amber-300 font-mono uppercase tracking-wider">

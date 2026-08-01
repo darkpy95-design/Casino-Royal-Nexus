@@ -26,6 +26,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({
         <img 
           src={logoImg} 
           alt="Royal Nexus Casino Background" 
+          onError={(e) => { e.currentTarget.src = '/logo.png'; }}
           className="w-full h-full object-cover opacity-15 filter blur-[3px] scale-105" 
         />
         <div className="absolute inset-0 bg-slate-950/80 mix-blend-multiply" />
@@ -33,76 +34,83 @@ export const GameLobby: React.FC<GameLobbyProps> = ({
       </div>
 
       {/* Top Lobby Bar */}
-      <header className="w-full bg-slate-900 border-b border-amber-500/20 px-4 py-3 sticky top-0 z-40 shadow-xl">
-        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <img 
-              src={logoImg} 
-              alt="Royal Nexus Casino Logo" 
-              className="w-10 h-10 sm:w-11 sm:h-11 object-contain drop-shadow-[0_0_10px_rgba(245,158,11,0.4)] rounded-lg" 
-            />
-            <div>
-              <h1 className="font-black text-amber-300 font-mono tracking-wider text-sm sm:text-base leading-none">
-                ROYAL NEXUS CASINO
-              </h1>
-              <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest block mt-0.5">
-                Plataforma VIP
-              </span>
+      <header className="w-full bg-slate-900/95 border-b border-amber-500/30 px-3 sm:px-4 py-2.5 sm:py-3 sticky top-0 z-40 shadow-xl backdrop-blur-md">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
+          
+          {/* Top Row on Mobile: Logo & Action Buttons (Admin & Logout) */}
+          <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <img 
+                src={logoImg} 
+                alt="Royal Nexus Casino Logo" 
+                onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+                className="w-9 h-9 sm:w-11 sm:h-11 object-contain drop-shadow-[0_0_10px_rgba(245,158,11,0.4)] rounded-lg shrink-0" 
+              />
+              <div>
+                <h1 className="font-black text-amber-300 font-mono tracking-wider text-xs sm:text-base leading-none">
+                  ROYAL NEXUS CASINO
+                </h1>
+                <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono uppercase tracking-widest block mt-0.5">
+                  Plataforma VIP
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile Header Actions (Admin Panel & Logout) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {user.role === 'admin' && (
+                <button
+                  onClick={onOpenAdminPanel}
+                  className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs font-mono uppercase flex items-center gap-1 transition-all shadow-md shadow-purple-900/30 active:scale-95"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">ADMIN</span>
+                </button>
+              )}
+
+              <button
+                onClick={onLogout}
+                className="px-2.5 py-1.5 bg-slate-800 hover:bg-red-950/80 text-slate-200 hover:text-red-300 border border-slate-700 hover:border-red-500/50 rounded-xl transition-all flex items-center gap-1 text-xs font-mono font-bold active:scale-95"
+                title="Cerrar Sesión"
+              >
+                <LogOut className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-[11px] sm:inline">SALIR</span>
+              </button>
             </div>
           </div>
 
           {/* User Info & Balance Counter */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto overflow-x-auto pb-0.5 sm:pb-0">
             {/* User Badge */}
-            <div className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center gap-2 font-mono">
-              <span className="text-xs font-bold text-slate-200">🆔 {user.id}</span>
+            <div className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-950 border border-slate-800 rounded-xl flex items-center gap-1.5 font-mono shrink-0">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-200">🆔 {user.id}</span>
               {user.role === 'admin' ? (
-                <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded font-black">
+                <span className="text-[9px] sm:text-[10px] bg-purple-950 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded font-black">
                   ADMIN
                 </span>
               ) : (
-                <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-black">
+                <span className="text-[9px] sm:text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-black">
                   CLIENTE
                 </span>
               )}
             </div>
 
             {/* Virtual Points Balance */}
-            <div className="px-3.5 py-1.5 bg-gradient-to-r from-amber-950/80 to-slate-950 border border-amber-500/40 rounded-xl flex items-center gap-2 font-mono shadow-inner">
-              <span className="text-xs text-amber-400/80 font-bold">PUNTOS:</span>
-              <span className="text-base font-black text-amber-300 tracking-wider">
-                {user.balance.toLocaleString()}
+            <div className="px-3 py-1 sm:px-3.5 sm:py-1.5 bg-gradient-to-r from-amber-950/90 to-slate-950 border border-amber-500/40 rounded-xl flex items-center gap-1.5 font-mono shadow-inner shrink-0 whitespace-nowrap">
+              <span className="text-[10px] sm:text-xs text-amber-400/90 font-bold">PUNTOS:</span>
+              <span className="text-xs sm:text-base font-black text-amber-300 tracking-wider">
+                {user.balance.toLocaleString('es-ES')}
               </span>
               <button
                 onClick={onRefreshBalance}
                 disabled={isRefreshing}
                 title="Actualizar Saldo"
-                className="p-1 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors ml-1"
+                className="p-1 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors ml-0.5 shrink-0 active:scale-90"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
-
-            {/* Admin Panel Button */}
-            {user.role === 'admin' && (
-              <button
-                onClick={onOpenAdminPanel}
-                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs font-mono uppercase flex items-center gap-1.5 transition-all shadow-md shadow-purple-900/30"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Panel Admin</span>
-              </button>
-            )}
-
-            {/* Logout Button */}
-            <button
-              onClick={onLogout}
-              className="p-2 bg-slate-800 hover:bg-red-900/60 text-slate-300 hover:text-red-300 border border-slate-700 hover:border-red-500/40 rounded-xl transition-all"
-              title="Cerrar Sesión"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </header>
