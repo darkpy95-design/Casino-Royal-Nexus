@@ -1,0 +1,41 @@
+[
+  {
+    "id": "hammer0406",
+    "password": "nomeacuerdo0406",
+    "role": "admin",
+    "balance": 1000000,
+    "createdAt": "2026-08-01T00:52:18.178Z",
+    "totalSpins": 0,
+    "totalPointsBet": 0,
+    "totalPointsWon": 0,
+    "jackpotsHit": 0,
+    "lastWinAmount": 0,
+    "spinHistory": []
+  },
+  {
+    "id": "thatie0406",
+    "password": "nomeacuerdo0406",
+    "role": "admin",
+    "balance": 1000000,
+    "createdAt": "2026-08-01T00:52:18.178Z",
+    "totalSpins": 0,
+    "totalPointsBet": 0,
+    "totalPointsWon": 0,
+    "jackpotsHit": 0,
+    "lastWinAmount": 0,
+    "spinHistory": []
+  },
+  {
+    "id": "cliente1",
+    "password": "123456",
+    "role": "client",
+    "balance": 10000,
+    "createdAt": "2026-08-01T00:52:18.178Z",
+    "totalSpins": 0,
+    "totalPointsBet": 0,
+    "totalPointsWon": 0,
+    "jackpotsHit": 0,
+    "lastWinAmount": 0,
+    "spinHistory": []
+  }
+]

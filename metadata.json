@@ -1,0 +1,6 @@
+{
+  "name": "Royal Nexus Casino",
+  "description": "Plataforma de casino virtual VIP Royal Nexus Casino con Globo Millonario, Chicken Road, Tragamonedas de Frutas, Puertas del Olimpo, Ruleta Relámpago, Blackjack Royale 21, Raspa y Gana, y Rueda Crazy Time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
