@@ -42,6 +42,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // House Advantage / RTP Control State
   const [houseRtpTarget, setHouseRtpTarget] = useState<number>(75);
   const [isSavingRtp, setIsSavingRtp] = useState<boolean>(false);
+  const [rtpSuccessInline, setRtpSuccessInline] = useState<string | null>(null);
+
+  // Active Tab for Fixed Solid Modal Interaction
+  const [activeTab, setActiveTab] = useState<'all' | 'credit_create' | 'rtp' | 'users'>('all');
 
   // User Deletion Modal State
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
@@ -91,6 +95,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const handleSaveRtp = async (targetRtp: number) => {
     setIsSavingRtp(true);
+    setRtpSuccessInline(null);
     try {
       const res = await fetch('/api/admin/set-rtp', {
         method: 'POST',
@@ -101,6 +106,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       if (res.ok && data.success) {
         setHouseRtpTarget(data.rtpTarget);
         setStatusMsg({ type: 'success', text: data.message });
+        setRtpSuccessInline(`¡Configuración Guardada! Retención de la Casa: ${100 - data.rtpTarget}% | RTP: ${data.rtpTarget}% (Aplicado a todos los juegos)`);
       } else {
         setStatusMsg({ type: 'error', text: data.error || 'Error al guardar configuración' });
       }
@@ -223,7 +229,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 font-sans text-slate-100">
-      <div className="bg-slate-900 border border-purple-500/40 rounded-2xl sm:rounded-3xl w-full max-w-4xl max-h-[95dvh] sm:max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="bg-slate-900 border border-purple-500/40 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[92dvh] sm:h-[86dvh] max-h-[850px] min-h-[500px] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Full-screen Casino Background Wallpaper in Admin Panel */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
           <img 
@@ -263,6 +269,54 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           </button>
         </div>
 
+        {/* Fixed Navigation Tabs */}
+        <div className="bg-slate-950/95 border-b border-slate-800 px-3.5 sm:px-5 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0 relative z-10">
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'all'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40 ring-1 ring-purple-400/50'
+                : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            📊 Vista Completa
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('credit_create')}
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'credit_create'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40 ring-1 ring-purple-400/50'
+                : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            💳 Cargar Puntos & Crear
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('rtp')}
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'rtp'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40 ring-1 ring-purple-400/50'
+                : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            🏛️ Margen Casa ({100 - houseRtpTarget}%)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('users')}
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'users'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40 ring-1 ring-purple-400/50'
+                : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
+            }`}
+          >
+            👥 Lista Clientes ({users.length})
+          </button>
+        </div>
+
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 relative z-10">
           {/* Status Toast Message */}
@@ -292,7 +346,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           )}
 
           {/* Grid Layout: Form 1 Acreditar Puntos + Form 2 Crear Usuario */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {(activeTab === 'all' || activeTab === 'credit_create') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Box 1: Acreditar Puntos por ID */}
             <div className="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-4">
               <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
@@ -435,8 +490,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </form>
           </div>
+          )}
 
           {/* Section 3: House Advantage & RTP Control (Ajuste de Ganancia del Dueño) */}
+          {(activeTab === 'all' || activeTab === 'rtp') && (
           <div className="bg-slate-950/80 border border-emerald-500/40 rounded-2xl p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2">
@@ -456,6 +513,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 <span className="text-base font-black text-emerald-300 font-mono">{100 - houseRtpTarget}% GANANCIA</span>
               </div>
             </div>
+
+            {/* Inline Success Notice */}
+            {rtpSuccessInline && (
+              <div className="p-3 bg-emerald-950 border border-emerald-400/60 rounded-xl flex items-center justify-between gap-2 text-xs font-mono text-emerald-200 animate-fade-in shadow-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="font-bold">{rtpSuccessInline}</span>
+                </div>
+                <button onClick={() => setRtpSuccessInline(null)} className="text-slate-400 hover:text-white">✕</button>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
               <button
@@ -532,8 +600,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
             </div>
           </div>
+          )}
 
-          {/* Section 3: Registered Clients Table */}
+          {/* Section 4: Registered Clients Table */}
+          {(activeTab === 'all' || activeTab === 'users') && (
           <div className="space-y-3 pt-2">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2.5">
@@ -617,6 +687,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <button
                         onClick={() => {
                           setCreditTargetId(u.id);
+                          setActiveTab('credit_create');
                         }}
                         className="flex-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1"
                       >
@@ -696,6 +767,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           <button
                             onClick={() => {
                               setCreditTargetId(u.id);
+                              setActiveTab('credit_create');
                             }}
                             className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] font-bold transition-colors"
                             title="Seleccionar usuario para cargar o descontar puntos"
@@ -726,6 +798,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </table>
             </div>
           </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, RefreshCw, Zap, HelpCircle, AlertCircle, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, RefreshCw, HelpCircle, AlertCircle, ShoppingBag, CheckCircle2, Award } from 'lucide-react';
 import { soundEngine } from '../audio';
 import { GameInfoModal } from './GameInfoModal';
 
@@ -180,26 +180,29 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
     isScratchingRef.current = false;
   };
 
-  // Check win state ONLY when ALL 9 cells have been scratched
+  // Check win state: if 3 matching cells are scratched OR all 9 cells are scratched, verify automatically
   const checkWinState = () => {
     if (!currentTicket || isRevealed) return;
 
-    const scratchedCount = scratchedCellsRef.current.filter(Boolean).length;
+    const scratchedIndices = scratchedCellsRef.current
+      .map((scratched, idx) => (scratched ? idx : -1))
+      .filter(idx => idx !== -1);
 
-    // ONLY declare winner when all 9 cells are scratched!
-    if (scratchedCount >= 9) {
-      scratchedCellsRef.current = Array(9).fill(true);
-      setScratchedCells(Array(9).fill(true));
+    const scratchedValues = scratchedIndices.map(idx => currentTicket.grid[idx]);
+    const valCounts: Record<number, number> = {};
+    let hasThreeMatches = false;
 
-      canvasRefs.current.forEach(c => {
-        if (c) {
-          const ctx = c.getContext('2d');
-          if (ctx) ctx.clearRect(0, 0, c.width, c.height);
+    scratchedValues.forEach(val => {
+      if (val > 0) {
+        valCounts[val] = (valCounts[val] || 0) + 1;
+        if (valCounts[val] >= 3) {
+          hasThreeMatches = true;
         }
-      });
+      }
+    });
 
-      setIsRevealed(true);
-      processTicketWin(currentTicket);
+    if (hasThreeMatches || scratchedIndices.length >= 9) {
+      handleVerifyAndClaim();
     }
   };
 
@@ -221,7 +224,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       soundEngine.playJackpot();
       setWinMessage({
         amount: claimAmount,
-        text: `¡FELICIDADES! ¡ACERTASTE 3 COINCIDENCIAS DE ${claimAmount.toLocaleString('es-ES')} PTS!`,
+        text: `¡FELICIDADES! ¡3 COINCIDENCIAS VERIFICADAS! +${claimAmount.toLocaleString('es-ES')} PTS ACREDITADOS`,
       });
 
       try {
@@ -239,19 +242,20 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       soundEngine.playButtonClick();
       setWinMessage({
         amount: 0,
-        text: '¡Casi lo logras! No hubo 3 coincidencias en este boleto. ¡Sigue intentando!',
+        text: '¡Verificación completada! No hubo 3 coincidencias en este boleto. ¡Sigue intentando!',
       });
     }
   };
 
-  // Auto Reveal All
-  const handleRevealAll = () => {
+  // Verify and Claim Prize Button Handler
+  const handleVerifyAndClaim = () => {
     if (!currentTicket || isRevealed) return;
 
     soundEngine.playButtonClick();
     scratchedCellsRef.current = Array(9).fill(true);
     setScratchedCells(Array(9).fill(true));
 
+    // Clear foil canvas for all 9 cells so all numbers are clearly visible
     canvasRefs.current.forEach(canvas => {
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -475,13 +479,13 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
                 })}
               </div>
 
-              {/* Reveal All Button */}
+              {/* Verify & Claim Button */}
               <button
-                onClick={handleRevealAll}
+                onClick={handleVerifyAndClaim}
                 disabled={isRevealed}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-mono font-bold uppercase transition-all flex items-center justify-center gap-1.5 shadow-md disabled:opacity-40"
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 active:scale-95 text-white border border-emerald-400/60 rounded-xl text-xs sm:text-sm font-mono font-black uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 disabled:opacity-40"
               >
-                <Zap className="w-4 h-4 text-yellow-400 fill-current" /> REVELAR TODO AUTOMÁTICO
+                <CheckCircle2 className="w-4 h-4 text-yellow-300 fill-emerald-950" /> VERIFICAR Y COBRAR
               </button>
             </div>
           ) : (

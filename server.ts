@@ -227,12 +227,37 @@ function getUser(userId: string): UserAccount {
 let jackpotPool = 25000; // Starting virtual jackpot pool
 let globalNonce = 1000;
 
-// Configurable RTP Engine Settings (Commercial Casino Real Slot Settings - House Edge 20%-25%)
-let currentRtpConfig: RTPConfig = {
-  rtpTarget: 88, // Target Return to Player = 88% (More flexible and rewarding wins for players)
-  jackpotProbability: 0.0008, // 0.08% chance per spin for virtual jackpot
-  multiShootProbability: 0.04, // 4% chance to land multi-shoot bonus
-};
+// Configurable RTP Engine Settings (Commercial Casino Real Slot Settings - Default 75% RTP = 25% House Edge)
+const RTP_CONFIG_FILE = path.join(process.cwd(), 'rtp_config.json');
+
+function loadRtpConfig(): RTPConfig {
+  try {
+    if (fs.existsSync(RTP_CONFIG_FILE)) {
+      const data = fs.readFileSync(RTP_CONFIG_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed.rtpTarget === 'number') {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error('Error loading RTP config:', e);
+  }
+  return {
+    rtpTarget: 75,
+    jackpotProbability: 0.0008,
+    multiShootProbability: 0.04,
+  };
+}
+
+function saveRtpConfig(config: RTPConfig) {
+  try {
+    fs.writeFileSync(RTP_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Error saving RTP config:', e);
+  }
+}
+
+let currentRtpConfig: RTPConfig = loadRtpConfig();
 
 // Global Server Master Seed for Provably Fair
 const serverMasterSeed = crypto.randomBytes(32).toString('hex');
@@ -589,6 +614,7 @@ app.post('/api/admin/set-rtp', (req: Request, res: Response) => {
 
   const target = Math.min(95, Math.max(50, Number(rtpTarget) || 75));
   currentRtpConfig.rtpTarget = target;
+  saveRtpConfig(currentRtpConfig);
 
   res.json({
     success: true,
@@ -2513,6 +2539,7 @@ app.post('/api/config', (req: Request, res: Response) => {
   if (multiShootProbability && multiShootProbability >= 0.005 && multiShootProbability <= 0.2) {
     currentRtpConfig.multiShootProbability = Number(multiShootProbability);
   }
+  saveRtpConfig(currentRtpConfig);
   res.json({ success: true, config: currentRtpConfig });
 });
 

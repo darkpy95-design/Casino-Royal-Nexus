@@ -269,13 +269,13 @@ export const BlackjackGame: React.FC<BlackjackGameProps> = ({
                 key={chip}
                 onClick={() => setSelectedBet(chip)}
                 disabled={gameStatus === 'playing'}
-                className={`w-10 h-10 rounded-full font-mono text-xs font-black border-2 flex items-center justify-center transition-transform ${
+                className={`w-10 h-10 rounded-full font-mono text-[10px] sm:text-xs font-black border-2 flex items-center justify-center transition-transform ${
                   selectedBet === chip
                     ? 'bg-amber-400 text-slate-950 border-white scale-110 shadow-lg'
                     : 'bg-slate-800 text-amber-300 border-amber-500/40 hover:bg-slate-700'
                 }`}
               >
-                {(chip / 1000).toFixed(0)}k
+                {chip >= 1000 ? `${chip / 1000}k` : chip}
               </button>
             ))}
           </div>
