@@ -3,6 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDocs, collection, setDoc } from 'firebase/firestore';
 import { RING_SLOTS, SYMBOL_BET_KEYS } from './src/data/slotsData.js';
 import { BetState, SpinResult, RTPConfig, HitDetail } from './src/types.js';
 
@@ -10,6 +12,21 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Initialize Firebase Firestore for cloud persistence
+let firestoreDb: any = null;
+try {
+  const firebaseConfigPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(firebaseConfigPath)) {
+    const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf-8'));
+    const firebaseApp = initializeApp(firebaseConfig);
+    const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+    firestoreDb = getFirestore(firebaseApp, dbId);
+    console.log('🔥 [Firebase Firestore] Connected to database:', dbId);
+  }
+} catch (err) {
+  console.error('⚠️ Could not initialize Firebase Firestore:', err);
+}
 
 // Persistent User Account Interface
 export interface UserAccount {
@@ -36,7 +53,26 @@ export interface UserAccount {
 
 const USERS_FILE = path.join(process.cwd(), 'users.json');
 
-// File-backed Users Database
+// Helper to asynchronously persist a single user to Firestore cloud database
+async function syncUserToFirestore(user: UserAccount) {
+  if (!firestoreDb) return;
+  try {
+    const docRef = doc(firestoreDb, 'users', user.id.toLowerCase());
+    await setDoc(docRef, user, { merge: true });
+  } catch (err) {
+    console.error(`Error syncing user ${user.id} to Firestore:`, err);
+  }
+}
+
+// Helper to asynchronously persist all users to Firestore cloud database
+async function syncAllUsersToFirestore(map: Map<string, UserAccount>) {
+  if (!firestoreDb) return;
+  for (const user of map.values()) {
+    await syncUserToFirestore(user);
+  }
+}
+
+// File-backed & Cloud-backed Users Database
 function loadUsers(): Map<string, UserAccount> {
   const map = new Map<string, UserAccount>();
   try {
@@ -117,16 +153,53 @@ function loadUsers(): Map<string, UserAccount> {
   return map;
 }
 
-function saveUsers(map: Map<string, UserAccount>) {
+function saveUsers(map: Map<string, UserAccount>, specificUserId?: string) {
   try {
     const list = Array.from(map.values());
     fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf-8');
   } catch (err) {
     console.error('Error writing users.json:', err);
   }
+
+  if (specificUserId) {
+    const u = map.get(specificUserId.toLowerCase());
+    if (u) {
+      syncUserToFirestore(u);
+    }
+  } else {
+    syncAllUsersToFirestore(map);
+  }
 }
 
 const usersMap = loadUsers();
+
+// Async load from Firestore cloud database into memory on startup
+async function loadFromFirestoreAndSync(map: Map<string, UserAccount>) {
+  if (!firestoreDb) return;
+  try {
+    const usersCollection = collection(firestoreDb, 'users');
+    const snapshot = await getDocs(usersCollection);
+    if (!snapshot.empty) {
+      console.log(`🔥 [Firestore] Loaded ${snapshot.size} user account(s) from Cloud Database!`);
+      snapshot.forEach(docSnap => {
+        const u = docSnap.data() as UserAccount;
+        if (u && u.id) {
+          map.set(u.id.toLowerCase(), u);
+        }
+      });
+      try {
+        const list = Array.from(map.values());
+        fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+      } catch (e) {}
+    } else {
+      console.log('🔥 [Firestore] Database empty. Uploading default accounts to Cloud Database...');
+      await syncAllUsersToFirestore(map);
+    }
+  } catch (err) {
+    console.error('Error loading users from Firestore:', err);
+  }
+}
+loadFromFirestoreAndSync(usersMap);
 
 function getUser(userId: string): UserAccount {
   const normalizedKey = (userId || 'cliente1').trim().toLowerCase();
