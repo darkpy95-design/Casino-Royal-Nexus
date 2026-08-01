@@ -153,14 +153,13 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
 
     const percentScratched = transparentPixels / (canvas.width * canvas.height);
 
-    // Require at least 45% scratched before cell is fully cleared
-    if (percentScratched >= 0.45) {
+    // Require at least 40% scratched before cell foil is cleared
+    if (percentScratched >= 0.40) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!scratchedCellsRef.current[index]) {
         scratchedCellsRef.current[index] = true;
         setScratchedCells([...scratchedCellsRef.current]);
         soundEngine.playButtonClick();
-        checkWinState();
       }
     }
   };
@@ -178,32 +177,6 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
 
   const stopScratch = () => {
     isScratchingRef.current = false;
-  };
-
-  // Check win state: if 3 matching cells are scratched OR all 9 cells are scratched, verify automatically
-  const checkWinState = () => {
-    if (!currentTicket || isRevealed) return;
-
-    const scratchedIndices = scratchedCellsRef.current
-      .map((scratched, idx) => (scratched ? idx : -1))
-      .filter(idx => idx !== -1);
-
-    const scratchedValues = scratchedIndices.map(idx => currentTicket.grid[idx]);
-    const valCounts: Record<number, number> = {};
-    let hasThreeMatches = false;
-
-    scratchedValues.forEach(val => {
-      if (val > 0) {
-        valCounts[val] = (valCounts[val] || 0) + 1;
-        if (valCounts[val] >= 3) {
-          hasThreeMatches = true;
-        }
-      }
-    });
-
-    if (hasThreeMatches || scratchedIndices.length >= 9) {
-      handleVerifyAndClaim();
-    }
   };
 
   // Process Win / Claim
@@ -224,7 +197,7 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
       soundEngine.playJackpot();
       setWinMessage({
         amount: claimAmount,
-        text: `¡FELICIDADES! ¡3 COINCIDENCIAS VERIFICADAS! +${claimAmount.toLocaleString('es-ES')} PTS ACREDITADOS`,
+        text: `¡3 COINCIDENCIAS ENCONTRADAS Y VERIFICADAS! +${claimAmount.toLocaleString('es-ES')} PTS ACREDITADOS`,
       });
 
       try {
@@ -247,13 +220,15 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
     }
   };
 
-  // Verify and Claim Prize Button Handler
+  // Verify and Claim Prize Button Handler (Only enabled after ALL 9 cells are scratched)
   const handleVerifyAndClaim = () => {
     if (!currentTicket || isRevealed) return;
 
+    // Check that all 9 cells are scratched
+    const scratchedCount = scratchedCellsRef.current.filter(Boolean).length;
+    if (scratchedCount < 9) return;
+
     soundEngine.playButtonClick();
-    scratchedCellsRef.current = Array(9).fill(true);
-    setScratchedCells(Array(9).fill(true));
 
     // Clear foil canvas for all 9 cells so all numbers are clearly visible
     canvasRefs.current.forEach(canvas => {
@@ -480,13 +455,30 @@ export const ScratchCardGame: React.FC<ScratchCardGameProps> = ({
               </div>
 
               {/* Verify & Claim Button */}
-              <button
-                onClick={handleVerifyAndClaim}
-                disabled={isRevealed}
-                className="w-full py-3 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 active:scale-95 text-white border border-emerald-400/60 rounded-xl text-xs sm:text-sm font-mono font-black uppercase transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 disabled:opacity-40"
-              >
-                <CheckCircle2 className="w-4 h-4 text-yellow-300 fill-emerald-950" /> VERIFICAR Y COBRAR
-              </button>
+              {(() => {
+                const scratchedCount = scratchedCells.filter(Boolean).length;
+                const allScratched = scratchedCount >= 9;
+
+                return (
+                  <button
+                    type="button"
+                    onClick={handleVerifyAndClaim}
+                    disabled={!allScratched || isRevealed}
+                    className={`w-full py-3.5 rounded-xl text-xs sm:text-sm font-mono font-black uppercase transition-all flex items-center justify-center gap-2 shadow-lg ${
+                      allScratched && !isRevealed
+                        ? 'bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white border border-emerald-400/60 shadow-emerald-950/50 animate-pulse active:scale-95 cursor-pointer'
+                        : 'bg-slate-800/80 text-slate-400 border border-slate-700/50 opacity-60 cursor-not-allowed'
+                    }`}
+                  >
+                    <CheckCircle2 className={`w-4 h-4 ${allScratched && !isRevealed ? 'text-yellow-300 fill-emerald-950' : 'text-slate-500'}`} />
+                    {isRevealed
+                      ? 'BOLETO VERIFICADO'
+                      : allScratched
+                      ? 'VERIFICAR Y COBRAR'
+                      : `RASPA LAS 9 CASILLAS PARA VERIFICAR (${scratchedCount}/9)`}
+                  </button>
+                );
+              })()}
             </div>
           ) : (
             /* No Ticket Purchased Yet State */

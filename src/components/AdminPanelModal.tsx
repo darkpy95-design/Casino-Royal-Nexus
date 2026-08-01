@@ -228,7 +228,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 font-sans text-slate-100">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 font-sans text-slate-100 overflow-hidden">
       <div className="bg-slate-900 border border-purple-500/40 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[92dvh] sm:h-[86dvh] max-h-[850px] min-h-[500px] flex flex-col shadow-2xl overflow-hidden relative">
         {/* Full-screen Casino Background Wallpaper in Admin Panel */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
@@ -270,7 +270,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         </div>
 
         {/* Fixed Navigation Tabs */}
-        <div className="bg-slate-950/95 border-b border-slate-800 px-3.5 sm:px-5 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0 relative z-10">
+        <div className="bg-slate-950/95 border-b border-slate-800 px-3.5 sm:px-5 py-2 flex flex-wrap items-center justify-center sm:justify-start gap-1.5 shrink-0 relative z-10 overflow-x-hidden">
           <button
             type="button"
             onClick={() => setActiveTab('all')}
@@ -318,7 +318,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 relative z-10">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-6 relative z-10">
           {/* Status Toast Message */}
           {statusMsg && (
             <div
